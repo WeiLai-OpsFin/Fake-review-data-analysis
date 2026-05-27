@@ -1,0 +1,873 @@
+---
+title: "Hotel Review Study: Standard PLS-SEM Check in R"
+author: "Generated for Lai Wei"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>"
+)
+```
+
+# 使用说明
+
+这个 R Markdown 文件的目标很简单：
+
+1. 用 **R 的 SEMinR 包** 重新跑一遍 PLS-SEM；
+2. 尽量复刻你 Python notebook 里的数据清洗、反向计分和结构模型；
+3. 输出 R 版结果表；
+4. 如果文件夹里有 Python 输出的 `PLS_SEM_Manuscript_Tables.xlsx`，就自动和 Python 结果做对比。
+
+> 重要：请把本 `.Rmd` 文件、两个原始问卷 Excel 文件、以及 Python 输出的 `PLS_SEM_Manuscript_Tables.xlsx` 放在同一个文件夹里。  
+> 如果自动识别失败，请在第 2 节手动填写 `REAL_FILE` 和 `FAKE_FILE`。
+
+# 1. 安装并加载 R 包
+
+```{r packages}
+required_packages <- c(
+  "readxl", "readr", "dplyr", "tidyr", "stringr", "purrr", "tibble",
+  "seminr", "psych", "car", "writexl", "knitr"
+)
+
+new_packages <- setdiff(required_packages, rownames(installed.packages()))
+if (length(new_packages) > 0) {
+  install.packages(new_packages, dependencies = TRUE)
+}
+
+library(readxl)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(tibble)
+library(seminr)
+library(psych)
+library(car)
+library(writexl)
+library(knitr)
+```
+
+# 2. 全局设置与文件路径
+
+```{r global-settings}
+RANDOM_STATE <- 2026
+BOOTSTRAP_SAMPLES <- 5000
+CORES <- max(1, parallel::detectCores() - 1)
+
+APPLY_SCREENING <- TRUE
+FILTER_ADULT <- TRUE
+FILTER_ONLINE_EXPERIENCE <- TRUE
+FILTER_ATTENTION_CHECK <- TRUE
+
+LIKERT_MIN <- 1
+LIKERT_MAX <- 5
+REVERSE_SUM <- LIKERT_MIN + LIKERT_MAX
+
+OUTPUT_DIR <- "R_SEM_results"
+dir.create(OUTPUT_DIR, showWarnings = FALSE, recursive = TRUE)
+
+# ------------------------------------------------------------
+# 自动寻找文件。
+# 如果找不到，请手动改下面这两个路径。
+# ------------------------------------------------------------
+all_xlsx <- list.files(".", pattern = "\\.xlsx$", full.names = TRUE)
+
+find_first_file <- function(pattern_vec, files) {
+  for (pat in pattern_vec) {
+    hit <- files[str_detect(basename(files), regex(pat, ignore_case = TRUE))]
+    hit <- hit[!str_detect(basename(hit), regex("Manuscript|Tables|SEM结果|result", ignore_case = TRUE))]
+    if (length(hit) > 0) return(hit[1])
+  }
+  return(NA_character_)
+}
+
+REAL_FILE <- find_first_file(c("^真.*\\.xlsx$", "real.*review.*\\.xlsx$", "real.*\\.xlsx$"), all_xlsx)
+FAKE_FILE <- find_first_file(c("^假.*\\.xlsx$", "fake.*review.*\\.xlsx$", "fake.*\\.xlsx$"), all_xlsx)
+
+# 如果自动识别失败，请取消下面两行的注释，并写成你电脑上的真实路径：
+# REAL_FILE <- "D:/UserData/Desktop/学校课程/Tsui/methodology/真358295789_按序号_网络评论对消费者酒店预订决策影响问卷_34_34.xlsx"
+# FAKE_FILE <- "D:/UserData/Desktop/学校课程/Tsui/methodology/假358381191_按序号_网络评论对消费者酒店预定决策影响_38_38.xlsx"
+
+if (is.na(REAL_FILE) || !file.exists(REAL_FILE)) stop("找不到真实评论组 Excel 文件。请手动设置 REAL_FILE。")
+if (is.na(FAKE_FILE) || !file.exists(FAKE_FILE)) stop("找不到虚假评论组 Excel 文件。请手动设置 FAKE_FILE。")
+
+PYTHON_RESULT_FILE <- find_first_file(c("PLS_SEM_Manuscript_Tables.*\\.xlsx$"), all_xlsx)
+
+cat("真实评论组文件：", REAL_FILE, "\n")
+cat("虚假评论组文件：", FAKE_FILE, "\n")
+cat("Python结果文件：", ifelse(is.na(PYTHON_RESULT_FILE), "未找到，会跳过对比", PYTHON_RESULT_FILE), "\n")
+cat("输出文件夹：", OUTPUT_DIR, "\n")
+```
+
+# 3. 读取数据与重命名题目列
+
+```{r load-data}
+read_condition_file <- function(path, condition_name, review_type) {
+  read_excel(path) %>%
+    mutate(
+      Condition = condition_name,
+      ReviewType = review_type
+    )
+}
+
+rename_question_columns <- function(dat) {
+  old_names <- names(dat)
+  new_names <- vapply(old_names, function(x) {
+    x_trim <- str_trim(as.character(x))
+    m <- str_match(x_trim, "^(\\d+)\\s*[、\\.．]")
+    if (!is.na(m[1, 2])) {
+      paste0("Q", as.integer(m[1, 2]))
+    } else {
+      x
+    }
+  }, character(1))
+  names(dat) <- make.unique(new_names, sep = "_")
+  dat
+}
+
+as_numeric_safely <- function(x) {
+  if (is.numeric(x)) return(x)
+  suppressWarnings(readr::parse_number(as.character(x)))
+}
+
+real_raw <- read_condition_file(REAL_FILE, "Real review", 1)
+fake_raw <- read_condition_file(FAKE_FILE, "Fake review", 0)
+raw <- bind_rows(real_raw, fake_raw)
+
+raw_q <- rename_question_columns(raw)
+q_cols <- names(raw_q)[str_detect(names(raw_q), "^Q\\d+$")]
+raw_q <- raw_q %>% mutate(across(all_of(q_cols), as_numeric_safely))
+
+cat("原始样本量：", nrow(raw_q), "\n")
+cat("识别到的题目列：", paste(q_cols, collapse = ", "), "\n")
+raw_q %>% count(Condition) %>% kable()
+```
+
+# 4. 样本筛选
+
+```{r screening}
+df <- raw_q
+screening_log <- tibble(Step = "Initial sample", N = nrow(df))
+
+if (APPLY_SCREENING) {
+  if (FILTER_ADULT && "Q1" %in% names(df)) {
+    df <- df %>% filter(Q1 == 1)
+    screening_log <- bind_rows(screening_log, tibble(Step = "After adult screening: Q1 == 1", N = nrow(df)))
+  }
+  
+  if (FILTER_ONLINE_EXPERIENCE && "Q2" %in% names(df)) {
+    df <- df %>% filter(Q2 == 1)
+    screening_log <- bind_rows(screening_log, tibble(Step = "After online shopping/booking experience screening: Q2 == 1", N = nrow(df)))
+  }
+  
+  attention_candidates <- names(df)[str_detect(names(df), regex("注意力|attention", ignore_case = TRUE))]
+  if (FILTER_ATTENTION_CHECK && length(attention_candidates) > 0) {
+    att_col <- attention_candidates[1]
+    df <- df %>% filter(.data[[att_col]] == 4)
+    screening_log <- bind_rows(screening_log, tibble(Step = paste0("After attention check: ", att_col, " == 4"), N = nrow(df)))
+  }
+}
+
+df <- df %>% mutate(row_id = row_number())
+
+screening_log %>% kable()
+df %>% count(Condition) %>% kable()
+```
+
+# 5. 反向计分与分析数据集
+
+```{r build-analysis-data}
+reverse_likert <- function(x) REVERSE_SUM - x
+
+reverse_sources <- c(
+  Q7_R = "Q7",
+  Q9_R = "Q9",
+  Q10_R = "Q10",
+  Q15_R = "Q15",
+  Q24_R = "Q24",
+  Q29_R = "Q29"
+)
+
+for (new_col in names(reverse_sources)) {
+  old_col <- reverse_sources[[new_col]]
+  if (old_col %in% names(df)) {
+    df[[new_col]] <- reverse_likert(df[[old_col]])
+  }
+}
+
+item_map <- c(
+  PRE1 = "Q4",
+  PRE2 = "Q5",
+  PRE3 = "Q6",
+  PRE4 = "Q7_R",
+  AUTH1 = "Q8",
+  AUTH2 = "Q9_R",
+  AUTH3 = "Q10_R",
+  AUTH4 = "Q11",
+  TRUST1 = "Q12",
+  TRUST2 = "Q13",
+  TRUST3 = "Q14",
+  TRUST4 = "Q15_R",
+  RISK1 = "Q16",
+  RISK2 = "Q17",
+  RISK3 = "Q18",
+  RISK4 = "Q19",
+  BI1 = "Q20",
+  BI2 = "Q21",
+  BI3 = "Q22",
+  BI4 = "Q23",
+  BI5 = "Q24_R",
+  BI6 = "Q25",
+  BI7 = "Q26",
+  DC1 = "Q27",
+  DC2 = "Q28",
+  DC3 = "Q29_R",
+  DC4 = "Q30"
+)
+
+analysis <- tibble(
+  Condition = df$Condition,
+  ReviewType = as.numeric(df$ReviewType)
+)
+
+missing_items <- tibble(Short_Name = character(), Source_Column = character())
+
+for (short_name in names(item_map)) {
+  source_col <- item_map[[short_name]]
+  if (source_col %in% names(df)) {
+    analysis[[short_name]] <- as_numeric_safely(df[[source_col]])
+  } else {
+    missing_items <- bind_rows(missing_items, tibble(Short_Name = short_name, Source_Column = source_col))
+  }
+}
+
+if (nrow(missing_items) > 0) {
+  cat("下面这些题没有找到。如果它们属于核心模型，就必须检查原始列名：\n")
+  print(missing_items)
+}
+
+head(analysis) %>% kable()
+```
+
+# 6. PLS-SEM 测量模型与结构模型
+
+```{r model-specification}
+blocks <- list(
+  ReviewType = c("ReviewType"),
+  PreBookingIntention = c("PRE1", "PRE2", "PRE3", "PRE4"),
+  ReviewAuthenticity = c("AUTH1", "AUTH2", "AUTH3", "AUTH4"),
+  Trust = c("TRUST1", "TRUST2", "TRUST3", "TRUST4"),
+  PerceivedRisk = c("RISK1", "RISK2", "RISK3", "RISK4"),
+  BookingIntention = c("BI1", "BI2", "BI3", "BI4", "BI5", "BI6", "BI7")
+)
+
+construct_order <- names(blocks)
+all_indicators <- unlist(blocks, use.names = FALSE)
+missing_core <- setdiff(all_indicators, names(analysis))
+if (length(missing_core) > 0) {
+  stop(paste("核心模型缺少这些变量：", paste(missing_core, collapse = ", ")))
+}
+
+pls_data <- analysis %>%
+  select(all_of(all_indicators)) %>%
+  mutate(across(everything(), as_numeric_safely))
+
+# 为了尽量贴近你的 Python 代码，这里也做均值插补。
+mean_impute <- function(dat) {
+  dat %>% mutate(across(everything(), ~ ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)))
+}
+
+pls_data <- mean_impute(pls_data)
+
+cat("PLS数据维度：", nrow(pls_data), "行，", ncol(pls_data), "列\n")
+summary(pls_data)
+
+# ------------------------------------------------------------
+# SEMinR标准 PLS-PM 设定：
+# - composite + mode_A：传统 PLS-SEM 常用的反映式 Mode A 估计
+# - ReviewType 是单题观测变量，不解释内部一致性信度
+# ------------------------------------------------------------
+measurement_model <- constructs(
+  composite("ReviewType", single_item("ReviewType"), weights = mode_A),
+  composite("PreBookingIntention", multi_items("PRE", 1:4), weights = mode_A),
+  composite("ReviewAuthenticity", multi_items("AUTH", 1:4), weights = mode_A),
+  composite("Trust", multi_items("TRUST", 1:4), weights = mode_A),
+  composite("PerceivedRisk", multi_items("RISK", 1:4), weights = mode_A),
+  composite("BookingIntention", multi_items("BI", 1:7), weights = mode_A)
+)
+
+structural_model <- relationships(
+  paths(from = "ReviewType", to = c("ReviewAuthenticity", "Trust", "PerceivedRisk", "BookingIntention")),
+  paths(from = "ReviewAuthenticity", to = c("Trust", "PerceivedRisk", "BookingIntention")),
+  paths(from = "PreBookingIntention", to = "BookingIntention"),
+  paths(from = "Trust", to = "BookingIntention"),
+  paths(from = "PerceivedRisk", to = "BookingIntention")
+)
+
+expected_paths <- tibble::tribble(
+  ~From, ~To,
+  "ReviewType", "ReviewAuthenticity",
+  "ReviewType", "Trust",
+  "ReviewType", "PerceivedRisk",
+  "ReviewType", "BookingIntention",
+  "ReviewAuthenticity", "Trust",
+  "ReviewAuthenticity", "PerceivedRisk",
+  "ReviewAuthenticity", "BookingIntention",
+  "PreBookingIntention", "BookingIntention",
+  "Trust", "BookingIntention",
+  "PerceivedRisk", "BookingIntention"
+) %>% mutate(Path = paste(From, "->", To))
+
+expected_paths %>% kable()
+```
+
+# 7. 估计 PLS-SEM 模型
+
+```{r estimate-pls}
+set.seed(RANDOM_STATE)
+
+pls_model <- estimate_pls(
+  data = pls_data,
+  measurement_model = measurement_model,
+  structural_model = structural_model,
+  inner_weights = path_weighting,
+  missing = mean_replacement,
+  missing_value = NA,
+  maxIt = 500,
+  stopCriterion = 7,
+  assess_syntax = TRUE
+)
+
+pls_summary <- summary(pls_model)
+
+cat("PLS算法迭代次数：", pls_model$iterations, "\n")
+cat("最终权重变化：", pls_model$weightDiff, "\n")
+```
+
+# 8. 外部载荷 Outer Loadings
+
+```{r outer-loadings}
+outer_loadings <- as.data.frame(pls_model$outer_loadings) %>%
+  rownames_to_column("Item") %>%
+  pivot_longer(-Item, names_to = "Construct", values_to = "Loading") %>%
+  filter(!is.na(Loading), Loading != 0) %>%
+  arrange(match(Construct, construct_order), Item) %>%
+  mutate(
+    Loading = as.numeric(Loading),
+    Recommended_Loading_0.708 = if_else(Loading >= 0.708, "Pass", "Check")
+  )
+
+outer_loadings %>% kable(digits = 4)
+```
+
+# 9. 信度与收敛效度
+
+```{r reliability-ave}
+# SEMinR自带的信度表
+reliability_from_summary <- tryCatch({
+  as.data.frame(pls_summary$reliability) %>% rownames_to_column("Construct")
+}, error = function(e) NULL)
+
+# rhoC与AVE
+rhoC_AVE_table <- as.data.frame(rhoC_AVE(pls_model)) %>%
+  rownames_to_column("Construct")
+
+# rhoA
+rhoA_table <- as.data.frame(rho_A(pls_model, construct_order)) %>%
+  rownames_to_column("Construct")
+
+# Cronbach's alpha：对单题变量不解释，保留为NA
+cronbach_table <- map_dfr(names(blocks), function(con) {
+  items <- blocks[[con]]
+  if (length(items) <= 1) {
+    tibble(Construct = con, Cronbach_alpha = NA_real_)
+  } else {
+    alpha_value <- psych::alpha(pls_data[, items, drop = FALSE], warnings = FALSE)$total$raw_alpha
+    tibble(Construct = con, Cronbach_alpha = alpha_value)
+  }
+})
+
+reliability_ave <- cronbach_table %>%
+  left_join(rhoA_table, by = "Construct") %>%
+  left_join(rhoC_AVE_table, by = "Construct")
+
+# 尽量统一列名，方便看
+names(reliability_ave) <- names(reliability_ave) %>%
+  str_replace_all("rhoC", "Composite_Reliability") %>%
+  str_replace_all("AVE", "AVE")
+
+reliability_ave <- reliability_ave %>%
+  mutate(
+    Note = if_else(Construct == "ReviewType", "Single-item observed variable; do not interpret internal consistency", "")
+  )
+
+reliability_ave %>% kable(digits = 4)
+```
+
+# 10. 区分效度：Fornell-Larcker、Cross-loadings、HTMT
+
+```{r discriminant-validity}
+construct_scores <- as.data.frame(pls_model$construct_scores)
+
+# AVE提取函数：兼容不同SEMinR版本的列名
+find_ave_col <- function(dat) {
+  cn <- names(dat)
+  hit <- cn[str_detect(cn, regex("^AVE$|AVE", ignore_case = TRUE))]
+  if (length(hit) == 0) stop("没有找到AVE列，请检查 rhoC_AVE(pls_model) 输出。")
+  hit[1]
+}
+ave_col <- find_ave_col(rhoC_AVE_table)
+ave_lookup <- rhoC_AVE_table %>% select(Construct, AVE_value = all_of(ave_col))
+
+fornell_larcker <- cor(construct_scores, use = "pairwise.complete.obs")
+for (i in seq_len(nrow(ave_lookup))) {
+  con <- ave_lookup$Construct[i]
+  if (con %in% rownames(fornell_larcker)) {
+    fornell_larcker[con, con] <- sqrt(as.numeric(ave_lookup$AVE_value[i]))
+  }
+}
+
+# Cross-loadings：题项与所有构念得分的相关
+cross_loadings <- map_dfr(all_indicators, function(item) {
+  cors <- cor(pls_data[[item]], construct_scores, use = "pairwise.complete.obs")
+  tibble(Item = item, !!!as.list(as.numeric(cors))) %>%
+    setNames(c("Item", colnames(construct_scores)))
+})
+
+# HTMT手动计算：异质-单质相关 / 同质-异质相关
+calculate_htmt <- function(data, blocks) {
+  cons <- names(blocks)
+  out <- matrix(NA_real_, nrow = length(cons), ncol = length(cons), dimnames = list(cons, cons))
+  diag(out) <- 1
+  
+  for (i in seq_along(cons)) {
+    for (j in seq_along(cons)) {
+      if (i >= j) next
+      a <- blocks[[cons[i]]]
+      b <- blocks[[cons[j]]]
+      
+      if (length(a) <= 1 || length(b) <= 1) {
+        out[i, j] <- NA_real_
+        out[j, i] <- NA_real_
+        next
+      }
+      
+      cor_ab <- abs(cor(data[, a, drop = FALSE], data[, b, drop = FALSE], use = "pairwise.complete.obs"))
+      heterotrait_mean <- mean(cor_ab, na.rm = TRUE)
+      
+      cor_aa <- abs(cor(data[, a, drop = FALSE], use = "pairwise.complete.obs"))
+      cor_bb <- abs(cor(data[, b, drop = FALSE], use = "pairwise.complete.obs"))
+      monotrait_a <- cor_aa[upper.tri(cor_aa)]
+      monotrait_b <- cor_bb[upper.tri(cor_bb)]
+      monotrait_mean <- sqrt(mean(monotrait_a, na.rm = TRUE) * mean(monotrait_b, na.rm = TRUE))
+      
+      out[i, j] <- heterotrait_mean / monotrait_mean
+      out[j, i] <- out[i, j]
+    }
+  }
+  as.data.frame(out) %>% rownames_to_column("Construct")
+}
+
+htmt <- calculate_htmt(pls_data, blocks)
+
+cat("Fornell-Larcker：对角线是 sqrt(AVE)。\n")
+round(fornell_larcker, 4) %>% kable()
+
+cat("\nHTMT：ReviewType 是单题变量，所以相关HTMT通常为NA，不解释。\n")
+htmt %>% kable(digits = 4)
+```
+
+# 11. 结构模型：路径系数、R²、VIF、f²
+
+```{r structural-model}
+path_matrix <- as.matrix(pls_model$path_coef)
+
+get_path_coef <- function(from, to, mat) {
+  val1 <- suppressWarnings(mat[from, to])
+  val2 <- suppressWarnings(mat[to, from])
+  
+  if (!is.na(val1) && abs(val1) > 0) return(as.numeric(val1))
+  if (!is.na(val2) && abs(val2) > 0) return(as.numeric(val2))
+  return(NA_real_)
+}
+
+structural_paths_original <- expected_paths %>%
+  rowwise() %>%
+  mutate(Original_Effect = get_path_coef(From, To, path_matrix)) %>%
+  ungroup()
+
+# R2
+r2_table <- as.data.frame(pls_model$rSquared) %>%
+  rownames_to_column("Construct")
+if (ncol(r2_table) >= 2) {
+  names(r2_table)[2] <- "R2"
+}
+
+# Inner VIF：用潜变量得分做回归诊断
+path_model <- list(
+  ReviewAuthenticity = c("ReviewType"),
+  Trust = c("ReviewType", "ReviewAuthenticity"),
+  PerceivedRisk = c("ReviewType", "ReviewAuthenticity"),
+  BookingIntention = c("ReviewType", "PreBookingIntention", "ReviewAuthenticity", "Trust", "PerceivedRisk")
+)
+
+calc_vif_for_target <- function(target, preds, scores) {
+  if (length(preds) == 0) return(tibble())
+  if (length(preds) == 1) return(tibble(Target = target, Predictor = preds[1], VIF = 1))
+  dat <- scores[, c(target, preds), drop = FALSE]
+  fit <- lm(as.formula(paste(target, "~", paste(preds, collapse = "+"))), data = dat)
+  vifs <- car::vif(fit)
+  tibble(Target = target, Predictor = names(vifs), VIF = as.numeric(vifs))
+}
+
+inner_vif <- imap_dfr(path_model, ~ calc_vif_for_target(.y, .x, construct_scores)) %>%
+  mutate(VIF_Check_5 = if_else(VIF <= 5, "Pass", "Check"))
+
+# f² = (R2_full - R2_reduced) / (1 - R2_full)
+calc_r2_lm <- function(target, preds, scores) {
+  if (length(preds) == 0) return(0)
+  fit <- lm(as.formula(paste(target, "~", paste(preds, collapse = "+"))), data = scores)
+  summary(fit)$r.squared
+}
+
+f2_table <- imap_dfr(path_model, function(preds, target) {
+  r2_full <- calc_r2_lm(target, preds, construct_scores)
+  map_dfr(preds, function(pred) {
+    reduced_preds <- setdiff(preds, pred)
+    r2_reduced <- calc_r2_lm(target, reduced_preds, construct_scores)
+    f2 <- ifelse(r2_full < 1, (r2_full - r2_reduced) / (1 - r2_full), NA_real_)
+    size <- case_when(
+      is.na(f2) ~ "NA",
+      f2 >= 0.35 ~ "Large",
+      f2 >= 0.15 ~ "Medium",
+      f2 >= 0.02 ~ "Small",
+      TRUE ~ "Very small"
+    )
+    tibble(Target = target, Predictor = pred, R2_Full = r2_full, R2_Reduced = r2_reduced, f2 = f2, Effect_Size = size)
+  })
+})
+
+cat("路径系数：\n")
+structural_paths_original %>% kable(digits = 4)
+cat("\nR²：\n")
+r2_table %>% kable(digits = 4)
+cat("\nInner VIF：\n")
+inner_vif %>% kable(digits = 4)
+cat("\nf²：\n")
+f2_table %>% kable(digits = 4)
+```
+
+# 12. Bootstrap 显著性检验
+
+```{r bootstrap, cache=TRUE}
+set.seed(RANDOM_STATE)
+
+cat("开始Bootstrap。次数 =", BOOTSTRAP_SAMPLES, "。这一步可能比较慢。\n")
+
+boot_model <- bootstrap_model(
+  seminr_model = pls_model,
+  nboot = BOOTSTRAP_SAMPLES,
+  cores = CORES,
+  seed = RANDOM_STATE
+)
+
+boot_paths_raw <- tryCatch({
+  as.data.frame(boot_paths_df(boot_model))
+}, error = function(e) {
+  message("boot_paths_df读取失败：", e$message)
+  NULL
+})
+
+normalize_path_name <- function(x) {
+  x %>%
+    str_replace_all("\\s+", "") %>%
+    str_replace_all("-->", "->") %>%
+    str_replace_all("_", "") %>%
+    str_to_lower()
+}
+
+find_boot_col <- function(path_label, boot_df) {
+  if (is.null(boot_df)) return(NA_character_)
+  target <- normalize_path_name(path_label)
+  cols <- names(boot_df)
+  hit <- cols[normalize_path_name(cols) == target]
+  if (length(hit) > 0) return(hit[1])
+  hit <- cols[str_detect(normalize_path_name(cols), fixed(target))]
+  if (length(hit) > 0) return(hit[1])
+  return(NA_character_)
+}
+
+summarize_bootstrap <- function(original_tbl, boot_df) {
+  original_tbl %>%
+    rowwise() %>%
+    mutate(
+      Boot_Column = find_boot_col(Path, boot_df),
+      Bootstrap_Mean = if (!is.na(Boot_Column)) mean(boot_df[[Boot_Column]], na.rm = TRUE) else NA_real_,
+      Bootstrap_SD = if (!is.na(Boot_Column)) sd(boot_df[[Boot_Column]], na.rm = TRUE) else NA_real_,
+      t_value = ifelse(!is.na(Bootstrap_SD) && Bootstrap_SD > 0, Original_Effect / Bootstrap_SD, NA_real_),
+      p_value = ifelse(!is.na(t_value), 2 * (1 - pnorm(abs(t_value))), NA_real_),
+      CI_2.5 = if (!is.na(Boot_Column)) quantile(boot_df[[Boot_Column]], 0.025, na.rm = TRUE) else NA_real_,
+      CI_97.5 = if (!is.na(Boot_Column)) quantile(boot_df[[Boot_Column]], 0.975, na.rm = TRUE) else NA_real_,
+      Significant_0.05 = ifelse(!is.na(CI_2.5) & !is.na(CI_97.5) & CI_2.5 * CI_97.5 > 0, "Yes", "No")
+    ) %>%
+    ungroup()
+}
+
+structural_paths <- summarize_bootstrap(structural_paths_original, boot_paths_raw)
+
+structural_paths %>% kable(digits = 4)
+```
+
+# 13. 中介效应
+
+```{r mediation}
+indirect_specs <- list(
+  "ReviewType -> ReviewAuthenticity -> BookingIntention" = c(
+    "ReviewType -> ReviewAuthenticity",
+    "ReviewAuthenticity -> BookingIntention"
+  ),
+  "ReviewType -> ReviewAuthenticity -> Trust -> BookingIntention" = c(
+    "ReviewType -> ReviewAuthenticity",
+    "ReviewAuthenticity -> Trust",
+    "Trust -> BookingIntention"
+  ),
+  "ReviewType -> ReviewAuthenticity -> PerceivedRisk -> BookingIntention" = c(
+    "ReviewType -> ReviewAuthenticity",
+    "ReviewAuthenticity -> PerceivedRisk",
+    "PerceivedRisk -> BookingIntention"
+  ),
+  "ReviewType -> Trust -> BookingIntention" = c(
+    "ReviewType -> Trust",
+    "Trust -> BookingIntention"
+  ),
+  "ReviewType -> PerceivedRisk -> BookingIntention" = c(
+    "ReviewType -> PerceivedRisk",
+    "PerceivedRisk -> BookingIntention"
+  ),
+  "ReviewAuthenticity -> Trust -> BookingIntention" = c(
+    "ReviewAuthenticity -> Trust",
+    "Trust -> BookingIntention"
+  ),
+  "ReviewAuthenticity -> PerceivedRisk -> BookingIntention" = c(
+    "ReviewAuthenticity -> PerceivedRisk",
+    "PerceivedRisk -> BookingIntention"
+  )
+)
+
+path_lookup <- structural_paths_original %>% select(Path, Original_Effect)
+original_indirect <- imap_dfr(indirect_specs, function(paths, name) {
+  vals <- path_lookup$Original_Effect[match(paths, path_lookup$Path)]
+  tibble(Indirect_Effect = name, Original_Effect = prod(vals))
+})
+
+boot_indirect_df <- NULL
+if (!is.null(boot_paths_raw)) {
+  boot_indirect_df <- imap_dfr(indirect_specs, function(paths, name) {
+    cols <- map_chr(paths, find_boot_col, boot_df = boot_paths_raw)
+    if (any(is.na(cols))) return(tibble())
+    vals <- apply(boot_paths_raw[, cols, drop = FALSE], 1, prod, na.rm = FALSE)
+    tibble(Indirect_Effect = name, Bootstrap_Value = vals)
+  })
+}
+
+if (!is.null(boot_indirect_df) && nrow(boot_indirect_df) > 0) {
+  mediation_effects <- original_indirect %>%
+    rowwise() %>%
+    mutate(
+      Bootstrap_Mean = mean(boot_indirect_df$Bootstrap_Value[boot_indirect_df$Indirect_Effect == Indirect_Effect], na.rm = TRUE),
+      Bootstrap_SD = sd(boot_indirect_df$Bootstrap_Value[boot_indirect_df$Indirect_Effect == Indirect_Effect], na.rm = TRUE),
+      t_value = ifelse(!is.na(Bootstrap_SD) && Bootstrap_SD > 0, Original_Effect / Bootstrap_SD, NA_real_),
+      p_value = ifelse(!is.na(t_value), 2 * (1 - pnorm(abs(t_value))), NA_real_),
+      CI_2.5 = quantile(boot_indirect_df$Bootstrap_Value[boot_indirect_df$Indirect_Effect == Indirect_Effect], 0.025, na.rm = TRUE),
+      CI_97.5 = quantile(boot_indirect_df$Bootstrap_Value[boot_indirect_df$Indirect_Effect == Indirect_Effect], 0.975, na.rm = TRUE),
+      Significant_0.05 = ifelse(!is.na(CI_2.5) & !is.na(CI_97.5) & CI_2.5 * CI_97.5 > 0, "Yes", "No")
+    ) %>%
+    ungroup()
+} else {
+  mediation_effects <- original_indirect %>%
+    mutate(Bootstrap_Mean = NA_real_, Bootstrap_SD = NA_real_, t_value = NA_real_, p_value = NA_real_, CI_2.5 = NA_real_, CI_97.5 = NA_real_, Significant_0.05 = NA_character_)
+}
+
+mediation_effects %>% kable(digits = 4)
+```
+
+# 14. 预测评估：SEMinR predict_pls
+
+```{r prediction, eval=TRUE}
+predictive_assessment <- tryCatch({
+  pred <- predict_pls(
+    model = pls_model,
+    technique = predict_DA,
+    noFolds = min(5, nrow(pls_data)),
+    reps = 1,
+    cores = 1
+  )
+  
+  # 保存完整对象，具体PLSpredict指标可在R里继续查看
+  saveRDS(pred, file.path(OUTPUT_DIR, "seminr_predict_pls_object.rds"))
+  tibble(Status = "predict_pls finished", Object_File = file.path(OUTPUT_DIR, "seminr_predict_pls_object.rds"))
+}, error = function(e) {
+  tibble(Status = paste("predict_pls failed:", e$message), Object_File = NA_character_)
+})
+
+predictive_assessment %>% kable()
+```
+
+# 15. 构念描述统计与分组比较
+
+```{r condition-comparison}
+raw_construct_scores <- tibble(
+  Condition = analysis$Condition,
+  ReviewType = analysis$ReviewType,
+  PreBookingIntention = rowMeans(analysis[, blocks$PreBookingIntention], na.rm = TRUE),
+  ReviewAuthenticity = rowMeans(analysis[, blocks$ReviewAuthenticity], na.rm = TRUE),
+  Trust = rowMeans(analysis[, blocks$Trust], na.rm = TRUE),
+  PerceivedRisk = rowMeans(analysis[, blocks$PerceivedRisk], na.rm = TRUE),
+  BookingIntention = rowMeans(analysis[, blocks$BookingIntention], na.rm = TRUE)
+)
+
+construct_descriptives <- raw_construct_scores %>%
+  select(all_of(construct_order)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  rownames_to_column("Construct")
+
+condition_comparison <- map_dfr(setdiff(construct_order, "ReviewType"), function(con) {
+  fit <- t.test(raw_construct_scores[[con]] ~ raw_construct_scores$Condition)
+  tibble(
+    Construct = con,
+    Mean_Fake = mean(raw_construct_scores[[con]][raw_construct_scores$Condition == "Fake review"], na.rm = TRUE),
+    Mean_Real = mean(raw_construct_scores[[con]][raw_construct_scores$Condition == "Real review"], na.rm = TRUE),
+    Difference_Real_minus_Fake = Mean_Real - Mean_Fake,
+    t_value = unname(fit$statistic),
+    p_value = fit$p.value,
+    CI_low = fit$conf.int[1],
+    CI_high = fit$conf.int[2]
+  )
+})
+
+construct_descriptives %>% kable(digits = 4)
+condition_comparison %>% kable(digits = 4)
+```
+
+# 16. 和 Python 结果对比
+
+```{r compare-python}
+comparison_paths <- tibble()
+comparison_r2 <- tibble()
+
+if (!is.na(PYTHON_RESULT_FILE) && file.exists(PYTHON_RESULT_FILE)) {
+  py_sheets <- excel_sheets(PYTHON_RESULT_FILE)
+  
+  if ("Structural_Paths" %in% py_sheets) {
+    py_paths <- read_excel(PYTHON_RESULT_FILE, sheet = "Structural_Paths")
+    if (all(c("Path", "Original_Effect") %in% names(py_paths))) {
+      comparison_paths <- py_paths %>%
+        select(Path, Python_Beta = Original_Effect) %>%
+        left_join(structural_paths %>% select(Path, R_SEMinR_Beta = Original_Effect), by = "Path") %>%
+        mutate(Difference_R_minus_Python = R_SEMinR_Beta - Python_Beta)
+    }
+  }
+  
+  if ("R2_Q2" %in% py_sheets) {
+    py_r2 <- read_excel(PYTHON_RESULT_FILE, sheet = "R2_Q2")
+    py_r2_col <- names(py_r2)[str_detect(names(py_r2), regex("^R2$|R_squared|R2", ignore_case = TRUE))][1]
+    if (!is.na(py_r2_col) && "Construct" %in% names(py_r2)) {
+      comparison_r2 <- py_r2 %>%
+        select(Construct, Python_R2 = all_of(py_r2_col)) %>%
+        left_join(r2_table %>% select(Construct, R_SEMinR_R2 = R2), by = "Construct") %>%
+        mutate(Difference_R_minus_Python = R_SEMinR_R2 - Python_R2)
+    }
+  }
+}
+
+cat("路径系数对比：\n")
+if (nrow(comparison_paths) > 0) {
+  comparison_paths %>% kable(digits = 4)
+} else {
+  cat("没有找到可对比的 Python 路径系数表。\n")
+}
+
+cat("\nR²对比：\n")
+if (nrow(comparison_r2) > 0) {
+  comparison_r2 %>% kable(digits = 4)
+} else {
+  cat("没有找到可对比的 Python R²表。\n")
+}
+```
+
+# 17. 导出所有结果
+
+```{r export-results}
+construct_correlations <- cor(construct_scores, use = "pairwise.complete.obs") %>%
+  as.data.frame() %>%
+  rownames_to_column("Construct")
+
+export_tables <- list(
+  Screening = screening_log,
+  Cleaned_Analysis_Data = analysis,
+  PLS_Data = pls_data,
+  Outer_Loadings = outer_loadings,
+  Reliability_AVE = reliability_ave,
+  Fornell_Larcker = as.data.frame(fornell_larcker) %>% rownames_to_column("Construct"),
+  HTMT = htmt,
+  Cross_Loadings = cross_loadings,
+  Structural_Paths = structural_paths,
+  R2 = r2_table,
+  Inner_VIF = inner_vif,
+  f2_Effect_Size = f2_table,
+  Mediation = mediation_effects,
+  Construct_Scores = construct_scores,
+  Construct_Descriptives = construct_descriptives,
+  Construct_Correlations = construct_correlations,
+  Condition_Comparison = condition_comparison,
+  Compare_Python_Paths = comparison_paths,
+  Compare_Python_R2 = comparison_r2
+)
+
+write_xlsx(export_tables, path = file.path(OUTPUT_DIR, "R_SEMinR_PLS_SEM_Results.xlsx"))
+
+walk2(export_tables, names(export_tables), function(tbl, nm) {
+  readr::write_csv(tbl, file.path(OUTPUT_DIR, paste0(nm, ".csv")))
+})
+
+saveRDS(pls_model, file.path(OUTPUT_DIR, "seminr_pls_model.rds"))
+saveRDS(boot_model, file.path(OUTPUT_DIR, "seminr_bootstrap_model.rds"))
+
+cat("导出完成！\n")
+cat("主结果Excel：", file.path(OUTPUT_DIR, "R_SEMinR_PLS_SEM_Results.xlsx"), "\n")
+cat("PLS模型对象：", file.path(OUTPUT_DIR, "seminr_pls_model.rds"), "\n")
+cat("Bootstrap模型对象：", file.path(OUTPUT_DIR, "seminr_bootstrap_model.rds"), "\n")
+```
+
+# 18. 最后提醒
+
+看结果时，重点看这几个表：
+
+1. `Outer_Loadings`：题项载荷，最好大于 0.708；
+2. `Reliability_AVE`：信度与AVE；
+3. `HTMT`：区分效度；
+4. `Structural_Paths`：路径系数和Bootstrap显著性；
+5. `R2`：解释力；
+6. `Compare_Python_Paths`：R结果和Python结果差多少。
+
+如果 R 版和 Python 版不完全一样，不一定说明谁错了。原因通常是：
+
+- SEMinR 使用的是正式 PLS-PM 引擎；
+- Python notebook 里是手写的简化版算法；
+- Bootstrap 抽样随机数不同；
+- 缺失值处理、权重符号处理、标准化方式可能有细微差异。
+
