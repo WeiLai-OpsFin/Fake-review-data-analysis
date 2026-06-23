@@ -1,105 +1,90 @@
-﻿# Fake Review Data Analysis
+# Fake Review Analytics: Detection, Trust, and Hotel Booking Decisions
 
-## Project Overview
+This repository is a curated research portfolio on fake online reviews. It combines two complementary angles:
 
-This project is a research project on fake review data analysis.
+1. **NLP / machine-learning detection**: cleaning review text, building linguistic features, and preparing a fake-review classification workflow.
+2. **Consumer-behavior analytics**: testing how fake reviews influence perceived authenticity, trust, perceived risk, and hotel booking intention using a questionnaire experiment, DID-style comparison, and PLS-SEM-style path analysis.
 
-It mainly studies the relationship among online reviews, fake reviews, and consumers' hotel booking decisions.
+The project is organized for admissions reviewers: clean documentation, reproducible scripts, de-identified / compact data outputs, and English result tables.
 
-This repository contains questionnaire data, analysis code, research documents, and related materials. It is suitable for course papers, research training, and empirical analysis demonstrations.
+## Research Questions
 
----
+- Can fake reviews be identified through text preprocessing and classification features?
+- Do fake reviews lower perceived authenticity and trust in hotel reviews?
+- Which psychological mechanism matters most for booking intention: authenticity, trust, or perceived risk?
+- How can business analytics combine text mining with causal-style and structural modeling?
 
-## Research Topics
+## Headline Findings
 
-This project mainly focuses on the following questions:
+- The final questionnaire sample contains **68 valid responses**: 32 in the real-review condition and 36 in the fake-review condition.
+- Real reviews scored higher on perceived authenticity than fake reviews: mean difference = **0.746**, p = **0.0000**, Cohen's d = **1.08**.
+- Real reviews also scored higher on trust: mean difference = **0.497**, p = **0.0021**.
+- The DID-style estimate for booking intention is **-0.130** with p = **0.412**, so it is treated as exploratory rather than confirmatory evidence.
+- The PLS-SEM-style model explains **66.7%** of the variance in booking intention.
+- The strongest mechanism is authenticity -> trust -> booking intention: the indirect effect from review type through authenticity and trust is **0.166**, p = **0.0037**.
 
-- Whether online reviews affect consumers' hotel booking decisions
-- Whether fake reviews affect consumers' judgment
-- How review credibility, review quantity, and review content affect consumers
-- How to use the PLS-SEM method to analyze relationships among variables
+## Methods
 
----
+- Text cleaning and normalization for online reviews
+- NLP feature engineering and TF-IDF modeling
+- Classification-ready fake-review detection pipeline
+- Questionnaire data cleaning and screening
+- DID-style comparison of pre/post booking intention
+- PLS-SEM-style measurement and structural path analysis
+- Bootstrap inference for structural paths and mediation effects
 
-## Project File Description
+## Repository Structure
 
-Chinese file names in the repository are translated here for readability; the actual repository files were not renamed.
-
-| File or Material | Description |
+| Path | Purpose |
 |---|---|
-| New-version complete PLS-SEM analysis code notebook | Python / Jupyter Notebook analysis code |
-| standard_pls_sem_seminr_check.Rmd | R-language PLS-SEM analysis code |
-| formatted_discussion_literature_review_methodology.docx | Literature review, research methodology, and discussion sections |
-| Questionnaire Star hotel review questionnaire, Chinese version | Chinese questionnaire document |
-| Real-review questionnaire dataset on online reviews and consumers' hotel booking decisions, sorted by ID | Questionnaire data related to real reviews |
-| Fake-review questionnaire dataset on online reviews and consumers' hotel booking decisions, sorted by ID | Questionnaire data related to fake reviews |
+| `src/` | Reproducible Python scripts for text classification and survey modeling |
+| `data/` | Compact, reviewable data artifacts without large raw archives |
+| `results/` | Clean CSV outputs for DID, SEM, reliability, mediation, and IPMA results |
+| `docs/` | Methodology notes and variable dictionary |
+| `requirements.txt` | Python environment used for the analysis |
 
----
+## Reproducibility
 
-## Usage
+Install the Python dependencies:
 
-### 1. Clone the project
+```bash
+pip install -r requirements.txt
+```
 
-git clone https://github.com/Future-DakangShuji/Fake-review-data-analysis.git
+Run the text pipeline on any review dataset with a text column and label column:
 
-### 2. Enter the project folder
+```bash
+python src/fake_review_text_pipeline.py --input data/review_examples_20.csv --text-col review_text --label-col truth_label
+```
 
-cd Fake-review-data-analysis
+Reproduce the SEM-style path model from the checked-in construct scores:
 
-### 3. View the analysis code
+```bash
+python src/sem_path_model_from_scores.py --scores-file data/pls_sem_construct_scores.csv --outdir results/reproduced
+```
 
-If using Python, open:
+Run the full questionnaire analysis after placing the real-review and fake-review questionnaire exports in a local data folder:
 
-New-version complete PLS-SEM analysis code notebook
+```bash
+python src/hotel_review_did_sem_analysis.py --real-file path/to/real_reviews.xlsx --fake-file path/to/fake_reviews.xlsx --outdir results
+```
 
-If using R, open:
+The checked-in `results/` files are the curated outputs from the final analysis.
 
-standard_pls_sem_seminr_check.Rmd
+## Curation Note
 
----
+This portfolio intentionally excludes raw large archives, duplicated working folders, journal author guidelines, downloaded reference papers, chat logs, similarity / AI reports, and notebooks containing hard-coded external-service credentials. Those materials are useful during project work but not appropriate for a public admissions-facing repository.
 
-## Analysis Methods
+## Skills Demonstrated
 
-This project mainly uses the following methods:
-
-- Questionnaire data analysis
-- Descriptive statistical analysis
-- Reliability analysis
-- Validity analysis
-- PLS-SEM structural equation modeling
-- Path relationship analysis
-
----
-
-## Project Features
-
-- Contains data related to real reviews and fake reviews
-- Provides both Python and R analysis files
-- Suitable for research projects, course papers, and data analysis demonstrations
-- Has a clear file structure and is convenient for future extension
-
----
-
-## Notes
-
-This repository is only for learning, research, and course presentation purposes.
-
-Please do not use this project for the following purposes:
-
-- Creating fake reviews
-- Spreading fake reviews
-- Commercial fraud
-- Disclosing personal privacy
-- Violating academic integrity
-
----
+- Python data analysis with pandas, scipy, statsmodels, and scikit-learn
+- Natural language preprocessing and fake-review classification design
+- Survey experiment design and questionnaire data cleaning
+- DID-style comparison and structural path modeling
+- PLS-SEM interpretation: reliability, validity, mediation, R2, VIF, and IPMA
+- Research communication for digital trust, platform governance, and consumer analytics
 
 ## Author
 
-Future-DakangShuji
-
----
-
-## License
-
-This project is for academic and educational use only.
+Lai Wei  
+Research portfolio project on fake reviews, online trust, and hotel booking decisions
