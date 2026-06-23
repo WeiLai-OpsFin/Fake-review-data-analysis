@@ -1,0 +1,7 @@
+metric,value
+DID estimate,-0.1297
+p-value,0.4120974553025818
+95% CI low,-0.4396719608803029
+95% CI high,0.1802473577057007
+Conclusion,Not significant
+Plain-English interpretation,The fake-review group did not show a statistically stronger before-after increase in booking intention than the genuine-review group.
