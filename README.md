@@ -73,7 +73,7 @@ The checked-in `results/` files are the curated outputs from the final analysis.
 
 ## Curation Note
 
-This public version intentionally excludes raw large archives, duplicated working folders, journal author guidelines, downloaded reference papers, chat logs, similarity / AI reports, and notebooks containing hard-coded external-service credentials. Those materials are useful during project work but not appropriate for a compact public research repository.
+Private, duplicated, licensed, and non-reproducible working materials were excluded from the public repository.
 
 ## Technical Scope
 
