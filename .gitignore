@@ -1,4 +1,4 @@
-﻿__pycache__/
+__pycache__/
 .ipynb_checkpoints/
 *.pyc
 .env
@@ -6,3 +6,16 @@
 venv/
 .DS_Store
 Thumbs.db
+
+# Keep large/raw/private research files out of the public portfolio
+*.zip
+*.rar
+*.7z
+*.joblib
+*.pkl
+*.rds
+*.RData
+*.Rhistory
+raw/
+private/
+archives/
