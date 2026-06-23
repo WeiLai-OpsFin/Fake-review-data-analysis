@@ -1,94 +1,96 @@
 ﻿# Fake Review Data Analysis
 
-## 项目简介
+## Project Overview
 
-本项目是一个关于虚假评论数据分析的科研项目。
+This project is a research project on fake review data analysis.
 
-项目主要研究网络评论、虚假评论和消费者酒店预订决策之间的关系。
+It mainly studies the relationship among online reviews, fake reviews, and consumers' hotel booking decisions.
 
-本仓库包含问卷数据、分析代码、研究文档和相关材料，适合用于课程论文、科研训练和实证分析展示。
-
----
-
-## 研究主题
-
-本项目主要关注以下问题：
-
-- 网络评论会不会影响消费者的酒店预订决策
-- 虚假评论会不会影响消费者判断
-- 评论可信度、评论数量和评论内容如何影响消费者
-- 如何使用 PLS-SEM 方法分析变量之间的关系
+This repository contains questionnaire data, analysis code, research documents, and related materials. It is suitable for course papers, research training, and empirical analysis demonstrations.
 
 ---
 
-## 项目文件说明
+## Research Topics
 
-| 文件名 | 说明 |
+This project mainly focuses on the following questions:
+
+- Whether online reviews affect consumers' hotel booking decisions
+- Whether fake reviews affect consumers' judgment
+- How review credibility, review quantity, and review content affect consumers
+- How to use the PLS-SEM method to analyze relationships among variables
+
+---
+
+## Project File Description
+
+Chinese file names in the repository are translated here for readability; the actual repository files were not renamed.
+
+| File or Material | Description |
 |---|---|
-| 新版_PLS_SEM_完整分析代码.ipynb | Python / Jupyter Notebook 分析代码 |
-| standard_pls_sem_seminr_check.Rmd | R 语言 PLS-SEM 分析代码 |
-| formatted_discussion_literature_review_methodology.docx | 文献综述、研究方法和讨论部分 |
-| 问卷星版_酒店评论问卷_中文.docx | 中文问卷文档 |
-| 真358295789_按序号_网络评论对消费者酒店预订决策影响问卷_34_34.xlsx | 真实评论相关问卷数据 |
-| 假358381191_按序号_网络评论对消费者酒店预订决策影响_38_38.xlsx | 虚假评论相关问卷数据 |
+| New-version complete PLS-SEM analysis code notebook | Python / Jupyter Notebook analysis code |
+| standard_pls_sem_seminr_check.Rmd | R-language PLS-SEM analysis code |
+| formatted_discussion_literature_review_methodology.docx | Literature review, research methodology, and discussion sections |
+| Questionnaire Star hotel review questionnaire, Chinese version | Chinese questionnaire document |
+| Real-review questionnaire dataset on online reviews and consumers' hotel booking decisions, sorted by ID | Questionnaire data related to real reviews |
+| Fake-review questionnaire dataset on online reviews and consumers' hotel booking decisions, sorted by ID | Questionnaire data related to fake reviews |
 
 ---
 
-## 使用方法
+## Usage
 
-### 1. 克隆项目
+### 1. Clone the project
 
 git clone https://github.com/Future-DakangShuji/Fake-review-data-analysis.git
 
-### 2. 进入项目文件夹
+### 2. Enter the project folder
 
 cd Fake-review-data-analysis
 
-### 3. 查看分析代码
+### 3. View the analysis code
 
-如果使用 Python，可以打开：
+If using Python, open:
 
-新版_PLS_SEM_完整分析代码.ipynb
+New-version complete PLS-SEM analysis code notebook
 
-如果使用 R，可以打开：
+If using R, open:
 
 standard_pls_sem_seminr_check.Rmd
 
 ---
 
-## 分析方法
+## Analysis Methods
 
-本项目主要使用以下方法：
+This project mainly uses the following methods:
 
-- 问卷数据分析
-- 描述性统计分析
-- 信度分析
-- 效度分析
-- PLS-SEM 结构方程模型
-- 路径关系分析
-
----
-
-## 项目特点
-
-- 包含真实评论和虚假评论相关数据
-- 同时提供 Python 和 R 分析文件
-- 适合科研项目、课程论文和数据分析展示
-- 文件结构清晰，方便后续继续扩展
+- Questionnaire data analysis
+- Descriptive statistical analysis
+- Reliability analysis
+- Validity analysis
+- PLS-SEM structural equation modeling
+- Path relationship analysis
 
 ---
 
-## 注意事项
+## Project Features
 
-本仓库仅用于学习、科研和课程展示。
+- Contains data related to real reviews and fake reviews
+- Provides both Python and R analysis files
+- Suitable for research projects, course papers, and data analysis demonstrations
+- Has a clear file structure and is convenient for future extension
 
-请不要将本项目用于以下用途：
+---
 
-- 制造虚假评论
-- 传播虚假评论
-- 商业欺骗
-- 泄露个人隐私
-- 违反学术诚信的行为
+## Notes
+
+This repository is only for learning, research, and course presentation purposes.
+
+Please do not use this project for the following purposes:
+
+- Creating fake reviews
+- Spreading fake reviews
+- Commercial fraud
+- Disclosing personal privacy
+- Violating academic integrity
 
 ---
 
