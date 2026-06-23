@@ -1,6 +1,6 @@
 # Fake Review Analytics: Detection, Trust, and Hotel Booking Decisions
 
-This repository is a curated research portfolio on fake online reviews. It combines two complementary angles:
+This repository contains a reproducible empirical study of fake online reviews. It combines two complementary angles:
 
 1. **NLP / machine-learning detection**: cleaning review text, building linguistic features, and preparing a fake-review classification workflow.
 2. **Consumer-behavior analytics**: testing how fake reviews influence perceived authenticity, trust, perceived risk, and hotel booking intention using a questionnaire experiment, DID-style comparison, and PLS-SEM-style path analysis.
@@ -73,9 +73,9 @@ The checked-in `results/` files are the curated outputs from the final analysis.
 
 ## Curation Note
 
-This portfolio intentionally excludes raw large archives, duplicated working folders, journal author guidelines, downloaded reference papers, chat logs, similarity / AI reports, and notebooks containing hard-coded external-service credentials. Those materials are useful during project work but not appropriate for a public admissions-facing repository.
+This public version intentionally excludes raw large archives, duplicated working folders, journal author guidelines, downloaded reference papers, chat logs, similarity / AI reports, and notebooks containing hard-coded external-service credentials. Those materials are useful during project work but not appropriate for a compact public research repository.
 
-## Skills Demonstrated
+## Technical Scope
 
 - Python data analysis with pandas, scipy, statsmodels, and scikit-learn
 - Natural language preprocessing and fake-review classification design
@@ -87,4 +87,4 @@ This portfolio intentionally excludes raw large archives, duplicated working fol
 ## Author
 
 Lai Wei  
-Research portfolio project on fake reviews, online trust, and hotel booking decisions
+Research project on fake reviews, online trust, and hotel booking decisions
