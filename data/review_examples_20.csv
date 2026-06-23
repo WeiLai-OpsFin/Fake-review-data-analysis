@@ -1,0 +1,21 @@
+review_id,review_text,truth_label,sentiment,source_basis
+E01,"The room was clean, the check-in process was quick, and the location was convenient for the train station.",real,positive,curated_demo_sample
+E02,"The hotel looked older than the photos, but the staff were polite and the breakfast was acceptable.",real,neutral,curated_demo_sample
+E03,"The room smelled damp and the air conditioner was loud throughout the night.",real,negative,curated_demo_sample
+E04,"The front desk helped us change rooms after we reported a noise problem.",real,positive,curated_demo_sample
+E05,"The location was excellent, but the bathroom facilities clearly needed maintenance.",real,neutral,curated_demo_sample
+E06,"This was the most perfect hotel experience I have ever had. Everything was flawless and magical.",fake,positive,curated_demo_sample
+E07,"Absolutely amazing stay, perfect service, perfect room, perfect breakfast, perfect location.",fake,positive,curated_demo_sample
+E08,"I would recommend this hotel to every traveler because it is unquestionably the best hotel in the city.",fake,positive,curated_demo_sample
+E09,"The hotel was terrible in every possible way, and nothing about the stay was acceptable.",fake,negative,curated_demo_sample
+E10,"Worst hotel ever. The room, service, food, and location were all completely unacceptable.",fake,negative,curated_demo_sample
+E11,"The room matched the photos, and the housekeeping team replaced towels every day.",real,positive,curated_demo_sample
+E12,"The bed was comfortable, although the corridor was noisy in the evening.",real,neutral,curated_demo_sample
+E13,"The Wi-Fi was unstable, which made the stay less convenient for business travel.",real,negative,curated_demo_sample
+E14,"The hotel is a hidden gem with unbelievably luxurious service at an unbelievably low price.",fake,positive,curated_demo_sample
+E15,"I cannot believe how amazing every single detail was. This hotel changed my life.",fake,positive,curated_demo_sample
+E16,"The staff answered our questions clearly, and the room was ready before the listed check-in time.",real,positive,curated_demo_sample
+E17,"The lobby was crowded, but the room itself was quiet and clean.",real,neutral,curated_demo_sample
+E18,"Nothing worked, everyone was rude, and the hotel should never receive any guests again.",fake,negative,curated_demo_sample
+E19,"The breakfast options were limited, but the price was fair for a short stay.",real,neutral,curated_demo_sample
+E20,"Every traveler must stay here. No other hotel can compare with this perfect masterpiece.",fake,positive,curated_demo_sample
