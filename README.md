@@ -5,7 +5,7 @@ This repository is a curated research portfolio on fake online reviews. It combi
 1. **NLP / machine-learning detection**: cleaning review text, building linguistic features, and preparing a fake-review classification workflow.
 2. **Consumer-behavior analytics**: testing how fake reviews influence perceived authenticity, trust, perceived risk, and hotel booking intention using a questionnaire experiment, DID-style comparison, and PLS-SEM-style path analysis.
 
-The project is organized for admissions reviewers: clean documentation, reproducible scripts, de-identified / compact data outputs, and English result tables.
+The repository emphasizes reproducibility, clear documentation, compact de-identified outputs, and interpretable English result tables.
 
 ## Research Questions
 
