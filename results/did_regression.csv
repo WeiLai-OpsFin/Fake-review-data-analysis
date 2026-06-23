@@ -1,0 +1,5 @@
+term,raw_term,coefficient,standard_error,t_value,p_value,significance,ci_95_low,ci_95_high
+"Genuine group, before reading reviews",Intercept,2.8906,0.1493,19.3602,0.0,***,2.598,3.1833
+Fake group difference before reading reviews,fake_review_group,-0.0851,0.1903,-0.447,0.6549,,-0.4581,0.2879
+Before-after change in genuine group,post_period,0.5067,0.1032,4.91,0.0,***,0.3044,0.709
+DID effect: extra before-after change in fake group,fake_review_group:post_period,-0.1297,0.1581,-0.8202,0.4121,,-0.4397,0.1802
