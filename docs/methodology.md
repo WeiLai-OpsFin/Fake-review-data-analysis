@@ -51,4 +51,4 @@ The fake-review detection workflow is structured around:
 
 ## Limitations
 
-The questionnaire component is best interpreted as pilot evidence because the sample size is limited. The repository therefore presents results as a research-training and portfolio project, emphasizing clean workflow, transparent assumptions, and reproducible outputs.
+The questionnaire component is best interpreted as pilot evidence because the sample size is limited. The repository therefore presents results as a pilot empirical research project, emphasizing clean workflow, transparent assumptions, and reproducible outputs.
