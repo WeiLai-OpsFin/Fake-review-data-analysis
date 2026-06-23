@@ -1,0 +1,3 @@
+fake_review_group,review_group,n,before_mean,after_mean,change_mean,change_sd
+0,Genuine review group,32,2.8906,3.3973,0.5067,0.5822
+1,Fake review group,36,2.8056,3.1825,0.377,0.7157
