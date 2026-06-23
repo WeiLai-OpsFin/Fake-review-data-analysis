@@ -1,0 +1,6 @@
+,Target,Construct,Importance_Total_Effect,Performance_0_100
+2,BookingIntention,ReviewAuthenticity,0.4871235954612153,48.529411764705884
+1,BookingIntention,PreBookingIntention,0.47438950163879234,46.13970588235294
+3,BookingIntention,Trust,0.45687683245203575,55.33088235294118
+0,BookingIntention,ReviewType,0.127606693951343,47.05882352941176
+4,BookingIntention,PerceivedRisk,-0.06249621066803761,68.84191176470588
