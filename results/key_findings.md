@@ -14,4 +14,4 @@ The DID-style estimate for booking intention is -0.130, with p = 0.412. This res
 
 ## 4. The SEM Model Has Strong Explanatory Power
 
-The PLS-SEM-style model explains 66.7% of the variance in booking intention. This is useful for an admissions-facing research portfolio because it shows a complete empirical workflow: construct design, measurement checks, structural paths, mediation, and interpretation.
+The PLS-SEM-style model explains 66.7% of the variance in booking intention. This is useful because it documents a complete empirical workflow: construct design, measurement checks, structural paths, mediation, and interpretation.
