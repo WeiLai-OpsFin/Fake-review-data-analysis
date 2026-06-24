@@ -7,6 +7,16 @@ This repository contains a reproducible empirical study of fake online reviews. 
 
 The repository emphasizes reproducibility, clear documentation, compact de-identified outputs, and interpretable English result tables.
 
+## Paper
+
+The conference paper associated with this project is included here:
+
+- [`docs/RARCS2026_fake_review_paper.pdf`](docs/RARCS2026_fake_review_paper.pdf)
+
+The PDF is labeled for the 32nd International Conference on Recent Advances in Retailing and Consumer Science (RARCS 2026), Berlin, Germany, July 13-16, 2026.
+
+**Author contribution:** Lai Wei is the third author. His main contribution focused on the data analysis work behind the study, including questionnaire data cleaning, condition comparison, DID-style analysis, and PLS-SEM-style structural path modeling.
+
 ## Research Questions
 
 - Can fake reviews be identified through text preprocessing and classification features?
@@ -40,7 +50,7 @@ The repository emphasizes reproducibility, clear documentation, compact de-ident
 | `src/` | Reproducible Python scripts for text classification and survey modeling |
 | `data/` | Compact, reviewable data artifacts without large raw archives |
 | `results/` | Clean CSV outputs for DID, SEM, reliability, mediation, and IPMA results |
-| `docs/` | Methodology notes and variable dictionary |
+| `docs/` | Methodology notes, variable dictionary, and the conference paper PDF |
 | `requirements.txt` | Python environment used for the analysis |
 
 ## Reproducibility
